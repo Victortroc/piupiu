@@ -8,6 +8,12 @@ interface User {
   email: string;
 };
 
+interface iMidia {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 interface AuthContextProps {
   setReload: (reload: boolean) => void;
   reload: boolean;
@@ -15,7 +21,9 @@ interface AuthContextProps {
   token: string | null;
   user: User | null;
   create: (formData: FormData) => Promise<any>;
-  createMsg: (postId: string, formData: FormData) => Promise<any>;
+  // create: (content: string, media: iMidia) => Promise<any>;
+  // createMsg: (postId: string, formData: FormData) => Promise<any>;
+  createMsg: (postId: string, comment: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
 }
@@ -62,21 +70,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     delete api.defaults.headers.common["Authorization"];
   };
 
-  const create = async (formData: FormData): Promise<any> => {
+  const create = async (formData: FormData ): Promise<any> => {
 
-      const response = await api.post("/posts", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+    const response = await api.post("/posts", formData, {
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "multipart/form-data",
+      },
+      
+    });
 
-      return response.data;
+    return response.data;
 
   };
 
-  const createMsg = async (postId: string, formData: FormData): Promise<any> => {
-
-    const response = await api.post(`/messages/${postId}`, formData);
+  const createMsg = async (postId: string, content: string): Promise<any> => {
+    const userId = user?.id;
+    const response = await api.post(`/messages/${postId}`, {userId, content});
 
     return response.data;
 

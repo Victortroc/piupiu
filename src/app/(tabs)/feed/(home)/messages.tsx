@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, ScrollView, Button, RefreshControl } from "react-native";
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, ScrollView, Button, RefreshControl, TextInput } from "react-native";
 import styled from "styled-components/native";
 import { useRoute } from "@react-navigation/native";
 import api from "@/src/services/api";
@@ -163,11 +163,11 @@ const Messages = () => {
         if (comment){
             try {
 
-                const formData = new FormData();
-                formData.append('userId', user?.id?.toString() || '');
-                formData.append('content', comment);
-
-                const newComment = await createMsg(postId, formData);
+                // const formData = new FormData();
+                // formData.append('userId', user?.id?.toString() || '');
+                // formData.append('content', comment);
+                console.log(comment);
+                const newComment = await createMsg(postId, comment);
 
                 setComments((prevComments) => [newComment, ...prevComments]);
 
@@ -317,6 +317,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginVertical: 10
     },
+    input: { borderBottomWidth: 1, marginBottom: 20, padding: 10 },
 });
 
 export default Messages;

@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
-  Image
+  Image,
+  Dimensions
 } from "react-native";
 import styled from "styled-components/native";
 import { showMessage } from 'react-native-flash-message';
@@ -24,6 +25,19 @@ interface FloatingActionButtonProps {
     onPress: () => void;
     postSet: Dispatch<SetStateAction<Post[]>>;
 }
+
+
+const InputContainer = styled.View`
+    position: relative;
+`;
+
+const CharCount = styled.Text`
+    position: absolute;
+    right: 10px;
+    bottom: 15px;
+    font-size: 12px;
+    color: #888;
+`;
 
 const ImagePreviewContainer = styled.View`
     position: relative;
@@ -77,9 +91,11 @@ const ModalOverlay = styled.View`
     align-items: center;
 `;
 
+const screenWidth = Dimensions.get('window').width;
+
 const ModalContent = styled.View`
     background-color: white;
-    width: 90%;
+    width: ${screenWidth * 0.9}px;
     padding: 20px;
     border-radius: 10px;
     shadow-color: #000;
@@ -98,6 +114,7 @@ const Input = styled.TextInput`
     padding: 10px;
     border-radius: 5px;
     margin-bottom: 15px;
+    max-width: 100%;
 `;
 
 const UploadButton = styled.TouchableOpacity`
@@ -143,48 +160,115 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ postSet }) 
     const [media, setMedia] = useState<any>(null);
     const { create, user, setReload, reload } = useAuth(); 
 
-    const handleUpload = () => {
-        launchImageLibrary(
-            {
-              mediaType: "photo",
-              quality: 0.5,
-            },
-            async (response) => {
-              if (response.didCancel) {
-                console.log("User canceled image picker");
-              } else if (response.errorCode) {
-                console.log("ImagePicker Error: ", response.errorMessage);
-              } else {
-                const selectedAsset = response.assets?.[0];
-                if (selectedAsset?.uri) {
-                  const fileInfo = {
-                    uri: selectedAsset.uri,
-                    name: selectedAsset.fileName || "upload.jpg",
-                    type: selectedAsset.type || "image/jpeg",
-                  };
-                  console.log(fileInfo);
-                  setMedia(fileInfo);
+    const handleUpload = async () => {
+        try {
+            const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (!granted) {
+                showMessage({
+                    message: "Ops!",
+                    description: "Permissão de mídia necessária",
+                    type: "info",
+                    titleStyle: {
+                        fontSize: 25,
+                        fontWeight: "bold",
+                    },
+                    textStyle: {
+                        fontSize: 16,
+                        paddingVertical: 20,
+                    },
+                    style: {
+                        justifyContent: "center",  
+                    },
+                });
+            } else{
+                const { assets, canceled } = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                    quality: 1
+                });
+
+                if (canceled) {
+                    showMessage({
+                        message: "Ops!",
+                        description: "Operação cancelada",
+                        type: "info",
+                        titleStyle: {
+                            fontSize: 25,
+                            fontWeight: "bold",
+                        },
+                        textStyle: {
+                            fontSize: 16,
+                            paddingVertical: 20,
+                        },
+                        style: {
+                            justifyContent: "center",  
+                        },
+                    });
+                } else {
+                    // const filename = assets[0].uri.substring(assets[0].uri.lastIndexOf('/') + 1, assets[0].uri.length);
+                    // const extend = filename.split('.')[1];
+                    // const formData = new FormData();
+
+                    // formData.append('file', JSON.parse(JSON.stringify({
+                    //     name: filename,
+                    //     uri: assets[0].uri,
+                    //     type: 'image/' + extend,
+                    // })));
+
+                    setMedia(assets[0]);
                 }
-              }
             }
-          );
+
+            // if (assetResult) {
+            //     const fileInfo = {
+            //         uri: assetResult.uri,
+            //         name: assetResult.fileName || "upload.jpg",
+            //         type: assetResult.type || "image/jpeg"
+            //     };
+            //     setMedia(fileInfo);
+            // }
+
+        } catch (error) {
+            showMessage({
+                    message: "Ops!",
+                    description: "Houve um erro acessar upar mídia",
+                    type: "danger",
+                    titleStyle: {
+                        fontSize: 25,
+                        fontWeight: "bold",
+                    },
+                    textStyle: {
+                        fontSize: 16,
+                        paddingVertical: 20,
+                    },
+                    style: {
+                        justifyContent: "center",  
+                    },
+            });
+        }
+        
     };
 
     const handleSubmit = async () => {
 
         if (comment && media) {
             try {
+                const filename = media.uri.substring(media.uri.lastIndexOf('/') + 1, media.uri.length);
+                const extend = filename.split('.')[1];
                 const formData = new FormData();
+
+                formData.append('medias', JSON.parse(JSON.stringify({
+                    name: filename,
+                    uri: media.uri,
+                    type: 'image/' + extend,
+                })));
+
                 formData.append('userId', user?.id?.toString() || '');
                 formData.append('content', comment);
 
-                if(media){
-                    const blob = await fetch(media.uri).then((res) => res.blob());
-                    const file = new File([blob], media.name, { type: media.type });
-                    formData.append("medias", file);
-                };
-
-                const newPost = await create(formData);
+                const newPost = await create(formData);;
 
                 postSet((prevPosts) => [newPost, ...prevPosts]);
 
@@ -255,16 +339,6 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ postSet }) 
         setModalVisible(false);
     };
 
-    const requestPermissions = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            alert('Desculpe, precisamos de permissão para acessar sua galeria!');
-        }
-    };
-    
-    useEffect(() => {
-        requestPermissions();
-    }, []);
 
     return (
         <View style={{ flex: 1 }}>
@@ -299,12 +373,19 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ postSet }) 
                                                 <Text style={{ fontWeight: "bold" }}>X</Text>
                                             </CloseButton>
                                         </Header>
-                                        <Input
-                                            placeholder="Digite seu comentário..."
-                                            value={comment}
-                                            onChangeText={setComment}
-                                            multiline
-                                        />
+                                        <InputContainer>
+                                            <Input
+                                                placeholder="Digite seu comentário..."
+                                                value={comment}
+                                                onChangeText={setComment}
+                                                multiline
+                                                maxLength={100}
+                                            />
+                                            {comment.length > 0 && (
+                                                <CharCount>{comment.length}/100</CharCount>
+                                            )}
+                                        </InputContainer>
+                                        
                                         {media && (
                                             <ImagePreviewContainer>
                                                 <RemoveImageButton onPress={() => setMedia(null)}>
