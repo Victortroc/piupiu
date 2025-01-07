@@ -1,3 +1,3 @@
 # PiuPiu 👋
 
-[Olá!]
+Aplicativo mobile, uma rede social.
